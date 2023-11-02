@@ -1,0 +1,21 @@
+function land = process_landmarks( path_ )
+
+
+%landmarks=dlmread(path_);
+
+
+%Centering
+mu_x=mean(landmarks(:,1));
+mu_y=mean(landmarks(:,2));
+mu_z=mean(landmarks(:,3));
+mu=[mu_x mu_y ,mu_z];
+for j=1:size(landmarks,1)
+    landmarks_gram(j,:)=landmarks(j,:)-mu;
+end
+
+
+normFro=sqrt(trace(landmarks_gram*landmarks_gram'));
+land=landmarks_gram/normFro;
+
+end
+

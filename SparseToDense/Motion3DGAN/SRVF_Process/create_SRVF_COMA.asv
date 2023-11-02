@@ -1,0 +1,60 @@
+addpath SRVFcodes/curveframework/
+
+L=68; %% Landmarks number
+l=30;  %% target video lenght
+% here set the path to save SRVF
+path_SRVF ='C:\Users\daoudi\Desktop\NaimaWorkspace2\Motion3DGAN\Data\COMA_SRVF_neutral2Exp' ;
+
+% This labels are used to align each example with the SRVF mean of its corresponding label (the SRVF mean of each label is already constructed with "create_q_mean.m" function
+LABELS={'Angry_q_meanCK_CASIA', 'Contempt_q_meanCK_CASIA', 'Disgust_q_meanCK_CASIA', 'Fear_q_meanCK_CASIA', 'Happy_q_meanCK_CASIA', 'Sad_q_meanCK_CASIA', 'Surprise_q_meanCK_CASIA'};
+
+% here set the path to landmarks
+pts_path='C:\Users\daoudi\Desktop\NaimaWorkspace2\Motion3DGAN\Data\COMA_landmarks_neutral2Exp';
+
+data_folder=dir(data_path);
+data_folder=data_folder(3:end);
+for i=1:length(data_folder)
+        data=load();
+        Landmarks=zeros(size(data.coma_landmarks,1), 3*L);
+        for k=1:size(data.coma_landmarks,1)
+            landmarks=data.coma_landmarks; %(30!,68,3)
+            landmarks=process_landmarks(landmarks);
+            pts_x=squeeze(landmarks(k,:,1));
+            pts_y=squeeze(landmarks(k,:,2));
+            pts_z=squeeze(landmarks(k,:,3));
+            pts=[pts_x;pts_y;pts_z];
+            Landmarks(k,:)= reshape(pts, 1, 3*L);
+        end
+        Landmarks=Landmarks'; %% size(2*L, F)
+        X2=ReSampleCurve(Landmarks,len);                     
+        [q2n, intensity]=curve_to_q(X2);
+        fprintf(intensity)
+        fprintf(sqrt(sum(sum(q2.*q2))/size(q2,2)))
+        %save([path_SRVF '\' data_folder(i).name '\' data_folder(i).name '_' subj_folders(j).name '_SRVF.mat'],'q2n');
+        clear Landmarks; clear q_sample; clear pts; clear q_mean; clear q2n; clear gamI; clear gam; clear X2, clear q2;
+         
+           
+end
+        
+
+
+           
+           
+         
+           
+% % %            %%% Align q with its corresponding q_mean (q_mean for each expression)
+% %            q_mean= load(['Q_means/' LABELS{label}]);
+% %            q_mean=q_mean.q_mean;
+% %            [gam] = DynamicProgrammingQ(q_mean/sqrt(InnerProd_Q(q_mean,q_mean)),q2/sqrt(InnerProd_Q(q2,q2)),0,0);
+% %            gamI = invertGamma(gam);
+% %            gamI = (gamI-gamI(1))/(gamI(end)-gamI(1));
+% %            X2n = Group_Action_by_Gamma_Coord(X2,gamI);
+% %            clear len;
+% %            %q2n = curve_to_q(X2n);  
+% %            q2n = curve_to_q(X2n); 
+% %            sqrt(sum(sum(q2.*q2))/size(q2,2))
+% %            break;
+% %              fprintf('%f, %d ',len , label)
+
+%%%% save aligned SRVF
+            
