@@ -5,37 +5,30 @@ from scipy.io import savemat, loadmat
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--Split', type=str,
-            help='Split according to Expressions (Expr) or Identities (Id)', default='Id')
+parser.add_argument('--split', type=str,
+            help='Split according to test or train', default='test')
 
 args = parser.parse_args()
-Split=args.Split
+Split = args.split
 
-for i in range(4):
-   Results_path_ours='./Results/' + Split +'Split/fold_' +str(i+1) +'/predictions/'
-   if i==0:
-      prediction=np.load(os.path.join(Results_path_ours, 'predictions.npy'))
-      prediction = prediction[:, :-1, :3] * 1000
-      print(np.shape(prediction))
+# Set the results path based on the split
+Results_path_ours = './Results/' + Split
 
-      gt = np.load(os.path.join(Results_path_ours, 'targets.npy'))
-      gt = gt[:, :, :3] * 1000
-      print(np.shape(gt))
+# Create the directory if it doesn't exist
+if not os.path.exists(Results_path_ours):
+    os.makedirs(Results_path_ours)
 
-   else:
+# Load predictions and ground truth
+prediction = np.load(os.path.join(Results_path_ours, 'predictions.npy'))
+prediction = prediction[:, :-1, :3] * 1000
+print(np.shape(prediction))
 
-      fold_pred= np.load(os.path.join(Results_path_ours, 'predictions.npy'))
-      prediction=np.concatenate((prediction,  fold_pred[:, :-1, :3] * 1000), axis=0)
+gt = np.load(os.path.join(Results_path_ours, 'targets.npy'))
+gt = gt[:, :, :3] * 1000
+print(np.shape(gt))
 
-      fold_gt=np.load(os.path.join(Results_path_ours, 'targets.npy'))
-      gt = np.concatenate((gt, fold_gt[:, :, :3] * 1000), axis=0)
-
-
-mean_err = np.mean(np.sqrt(np.sum((prediction-gt)**2, axis=2)))
-std_err=np.std(np.sqrt(np.sum((prediction-gt)**2, axis=2)))
+# Calculate mean and standard deviation of the error
+mean_err = np.mean(np.sqrt(np.sum((prediction - gt) ** 2, axis=2)))
+std_err = np.std(np.sqrt(np.sum((prediction - gt) ** 2, axis=2)))
 print('Our error', mean_err)
-print('Our std',std_err)
-
-
-
-
+print('Our std', std_err)

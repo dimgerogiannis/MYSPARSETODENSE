@@ -1,105 +1,89 @@
 from scipy.io import savemat, loadmat
-import time
 import numpy as np
 import trimesh
 import os, argparse
 from get_landmarks import get_landmarks
+import random
 
-
+def ensure_dir_exists(directory):
+    """Ensure that a directory exists, and if not, create it."""
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 parser = argparse.ArgumentParser(description='Arguments for dataset split')
-parser.add_argument('--test_fold', type=int)
-parser.add_argument('--target', type=bool, default=False,
-            help='target=True -> save target data, to generate neutral data don\'t change this argument it is false by default')
-parser.add_argument('--data_path', type=str,
-            help='path to COMA dataset')
-parser.add_argument('--Split', type=str,
-            help='Split according to Expressions (Expr) or Identities (Id)', default='Id')
-
+parser.add_argument('--data_path', type=str, default='/data2/gan_4dfab/4dfab_frames', help='path to dataset')
+parser.add_argument('--save_path', type=str, default='/data2/gan_4dfab/S2D_Data', help='path to save processed data')
+parser.add_argument('--ldm_path', type=str, default='./template/cropped_landmarks.pkl', help='path to landmarks]')
 args = parser.parse_args()
 
-Split=args.Split
-test_fold=args.test_fold
-target = args.target
-data_path= args.data_path
-save_path='./Data/'+ Split +'Split/fold_' + str(test_fold)
+# Set seed for reproducibility
+random.seed(42)
 
+subjects = os.listdir(args.data_path)
+random.shuffle(subjects)
 
+# Split subjects into train and test sets (85-15 split)
+num_test_subjects = int(0.15 * len(subjects))
+test_subjects = set(subjects[:num_test_subjects])
+train_subjects = set(subjects[num_test_subjects:])
 
-if test_fold==1:
-    fold=[11, 10,9]
-elif test_fold==2:
-    fold=[8, 7,6]
-elif test_fold==3:
-    fold=[5, 4,3]
-elif test_fold == 4:
-    fold = [2, 1, 0]
-
-
-points_neutral=[]
-points_target=[]
-landmarks_target=[]
-landmarks_neutral=[]
-count=0
-for (i_subj, subjdir) in enumerate(os.listdir(data_path)):
+count = 0
+for i_subj, subjdir in enumerate(subjects):
     print(i_subj)
-    for (i_expr, expr_dir) in enumerate(os.listdir(os.path.join(data_path, subjdir))):
-        if Split == 'Id':
-            helper = i_subj
-        elif Split == 'Expr':
-            helper = i_expr
-        else:
-            print('undefined split!  Please chose Id or Expr split')
-        if helper in fold:
-           cc=0
-           for mesh in os.listdir(os.path.join(data_path, subjdir, expr_dir)):
-                   if cc==0: ## consider only the first neutral face
-                      data_neutral = trimesh.load(os.path.join(data_path, subjdir, expr_dir, mesh), process=False)
-                      lands_neutral = get_landmarks(data_neutral.vertices, template='./template/template/template.obj')
-                      cc=cc+1
-                   data_target = trimesh.load(os.path.join(data_path, subjdir, expr_dir, mesh), process=False)
-                   lands_target = get_landmarks(data_target.vertices, template='./template/template/template.obj')
-                   points_neutral.append(data_neutral.vertices)
-                   points_target.append(data_target.vertices)
-                   landmarks_target.append(lands_target)
-                   landmarks_neutral.append(lands_neutral)
 
-print(np.shape(points_neutral))
-print(np.shape(points_target))
+    points_neutral = []
+    points_target = []
+    landmarks_neutral = []
+    landmarks_target = []
 
-if not os.path.exists(os.path.join(save_path, 'points_input')):
-    os.makedirs(os.path.join(save_path, 'points_input'))
+    for expr_dir in os.listdir(os.path.join(args.data_path, subjdir)):
+        cc = 0
+        for mesh in os.listdir(os.path.join(args.data_path, subjdir, expr_dir)):
+            if cc == 0:  # consider only the first neutral face
+                data_neutral = trimesh.load(os.path.join(args.data_path, subjdir, expr_dir, mesh), process=False)
+                lands_neutral = get_landmarks(data_neutral.vertices, args.ldm_path)
+                cc += 1
+            data_target = trimesh.load(os.path.join(args.data_path, subjdir, expr_dir, mesh), process=False)
+            lands_target = get_landmarks(data_target.vertices, args.ldm_path)
+            points_neutral.append(data_neutral.vertices)
+            points_target.append(data_target.vertices)
+            landmarks_neutral.append(lands_neutral)
+            landmarks_target.append(lands_target)
 
-if not os.path.exists(os.path.join(save_path, 'points_target')):
-    os.makedirs(os.path.join(save_path, 'points_target'))
+    if subjdir in test_subjects:
+        current_save_path = os.path.join(args.save_path, 'test')
+    else:
+        current_save_path = os.path.join(args.save_path, 'train')
 
-if not os.path.exists(os.path.join(save_path, 'landmarks_target')):
-    os.makedirs(os.path.join(save_path, 'landmarks_target'))
+    # Ensure all required directories exist
+    ensure_dir_exists(current_save_path)
+    ensure_dir_exists(os.path.join(current_save_path, 'points_input'))
+    ensure_dir_exists(os.path.join(current_save_path, 'points_target'))
+    ensure_dir_exists(os.path.join(current_save_path, 'landmarks_input'))
+    ensure_dir_exists(os.path.join(current_save_path, 'landmarks_target'))
 
-if not os.path.exists(os.path.join(save_path, 'landmarks_input')):
-    os.makedirs(os.path.join(save_path, 'landmarks_input'))
+    for j in range(len(points_neutral)):
+        np.save(os.path.join(current_save_path, 'points_input', '{0:08}_frame'.format(count + j)), points_neutral[j])
+        np.save(os.path.join(current_save_path, 'points_target', '{0:08}_frame'.format(count + j)), points_target[j])
+        np.save(os.path.join(current_save_path, 'landmarks_input', '{0:08}_frame'.format(count + j)), landmarks_neutral[j])
+        np.save(os.path.join(current_save_path, 'landmarks_target', '{0:08}_frame'.format(count + j)), landmarks_target[j])
+    
+    count += len(points_neutral)
 
-for j in range(len(points_neutral)):
-            np.save(os.path.join(save_path, 'points_input', '{0:08}_frame'.format(j)), points_neutral[j])
-            np.save(os.path.join(save_path, 'points_target', '{0:08}_frame'.format(j)), points_target[j])
-            np.save(os.path.join(save_path, 'landmarks_target', '{0:08}_frame'.format(j)), landmarks_target[j])
-            np.save(os.path.join(save_path, 'landmarks_input', '{0:08}_frame'.format(j)), landmarks_neutral[j])
+# Saving filenames for test and train sets as in the second code
+save_file_lists = ['test', 'train']
+for save_file in save_file_lists:
+    files_points = []
+    files_landmarks = []
 
-files = []
-for r, d, f in os.walk(os.path.join(save_path, 'points_input')):
-            for file in f:
-                if '.npy' in file:
-                    files.append(os.path.splitext(file)[0])
-np.save(os.path.join(save_path, 'paths_test.npy'), files)
+    for r, d, f in os.walk(os.path.join(args.save_path, save_file, 'points_input')):
+        for file in f:
+            if '.npy' in file:
+                files_points.append(os.path.splitext(file)[0])
+    np.save(os.path.join(args.save_path, save_file, 'paths_{}_points.npy'.format(save_file)), files_points)
 
-files = []
-for r, d, f in os.walk(os.path.join(save_path, 'landmarks_target')):
-    for file in f:
-        if '.npy' in file:
-            files.append(os.path.splitext(file)[0])
-np.save(os.path.join(save_path, 'landmarks_test.npy'), files)
-
-
-
-
-
+    for r, d, f in os.walk(os.path.join(args.save_path, save_file, 'landmarks_target')):
+        for file in f:
+            if '.npy' in file:
+                files_landmarks.append(os.path.splitext(file)[0])
+    np.save(os.path.join(args.save_path, save_file, 'paths_{}_landmarks.npy'.format(save_file)), files_landmarks)
