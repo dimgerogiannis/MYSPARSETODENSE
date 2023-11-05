@@ -11,9 +11,10 @@ def ensure_dir_exists(directory):
         os.makedirs(directory)
 
 parser = argparse.ArgumentParser(description='Arguments for dataset split')
-parser.add_argument('--data_path', type=str, default='/data2/gan_4dfab/4dfab_frames', help='path to dataset')
-parser.add_argument('--save_path', type=str, default='/data2/gan_4dfab/S2D_Data', help='path to save processed data')
-parser.add_argument('--ldm_path', type=str, default='./template/cropped_landmarks.pkl', help='path to landmarks]')
+parser.add_argument('--Split', type=str, choices=['train', 'test'], default='train', help='Choose either "train" or "test" split')
+parser.add_argument('--data_path', type=str, default='/data2/gan_4dfab/4dfab_frames_downsampled', help='path to dataset')
+parser.add_argument('--save_path_base', type=str, default='/data2/gan_4dfab/S2D_Data_downsampled/', help='path to save processed data')
+parser.add_argument('--ldm_path', type=str, default='./template/downsampled_cropped_landmarks.pkl', help='path to landmarks]')
 args = parser.parse_args()
 
 # Set seed for reproducibility
@@ -23,19 +24,23 @@ subjects = os.listdir(args.data_path)
 random.shuffle(subjects)
 
 # Split subjects into train and test sets (85-15 split)
-num_test_subjects = int(0.15 * len(subjects))
-test_subjects = set(subjects[:num_test_subjects])
-train_subjects = set(subjects[num_test_subjects:])
+test_subjects = set(subjects[:int(0.15 * len(subjects))])  # 15% for testing
+train_subjects = set(subjects[int(0.15 * len(subjects)):])  # 85% for training
 
-count = 0
+# Determine the current split's subjects based on the Split argument
+current_split_subjects = train_subjects if args.Split == 'train' else test_subjects
+
+save_path = args.save_path_base + args.Split
+
+points_neutral = []
+points_target = []
+landmarks_neutral = []
+landmarks_target = []
+
 for i_subj, subjdir in enumerate(subjects):
     print(i_subj)
-
-    points_neutral = []
-    points_target = []
-    landmarks_neutral = []
-    landmarks_target = []
-
+    if subjdir not in current_split_subjects:
+        continue
     for expr_dir in os.listdir(os.path.join(args.data_path, subjdir)):
         cc = 0
         for mesh in os.listdir(os.path.join(args.data_path, subjdir, expr_dir)):
@@ -50,40 +55,31 @@ for i_subj, subjdir in enumerate(subjects):
             landmarks_neutral.append(lands_neutral)
             landmarks_target.append(lands_target)
 
-    if subjdir in test_subjects:
-        current_save_path = os.path.join(args.save_path, 'test')
-    else:
-        current_save_path = os.path.join(args.save_path, 'train')
+print(np.shape(points_neutral))
+print(np.shape(points_target))
 
-    # Ensure all required directories exist
-    ensure_dir_exists(current_save_path)
-    ensure_dir_exists(os.path.join(current_save_path, 'points_input'))
-    ensure_dir_exists(os.path.join(current_save_path, 'points_target'))
-    ensure_dir_exists(os.path.join(current_save_path, 'landmarks_input'))
-    ensure_dir_exists(os.path.join(current_save_path, 'landmarks_target'))
+# Ensure directories exist
+os.makedirs(os.path.join(save_path, 'points_input'), exist_ok=True)
+os.makedirs(os.path.join(save_path, 'points_target'), exist_ok=True)
+os.makedirs(os.path.join(save_path, 'landmarks_target'), exist_ok=True)
+os.makedirs(os.path.join(save_path, 'landmarks_input'), exist_ok=True)
 
-    for j in range(len(points_neutral)):
-        np.save(os.path.join(current_save_path, 'points_input', '{0:08}_frame'.format(count + j)), points_neutral[j])
-        np.save(os.path.join(current_save_path, 'points_target', '{0:08}_frame'.format(count + j)), points_target[j])
-        np.save(os.path.join(current_save_path, 'landmarks_input', '{0:08}_frame'.format(count + j)), landmarks_neutral[j])
-        np.save(os.path.join(current_save_path, 'landmarks_target', '{0:08}_frame'.format(count + j)), landmarks_target[j])
-    
-    count += len(points_neutral)
+for j in range(len(points_neutral)):
+    np.save(os.path.join(save_path, 'points_input', '{0:08}_frame'.format(j)), points_neutral[j])
+    np.save(os.path.join(save_path, 'points_target', '{0:08}_frame'.format(j)), points_target[j])
+    np.save(os.path.join(save_path, 'landmarks_target', '{0:08}_frame'.format(j)), landmarks_target[j])
+    np.save(os.path.join(save_path, 'landmarks_input', '{0:08}_frame'.format(j)), landmarks_neutral[j])
 
-# Saving filenames for test and train sets as in the second code
-save_file_lists = ['test', 'train']
-for save_file in save_file_lists:
-    files_points = []
-    files_landmarks = []
+files = []
+for r, d, f in os.walk(os.path.join(save_path, 'points_input')):
+    for file in f:
+        if '.npy' in file:
+            files.append(os.path.splitext(file)[0])
+np.save(os.path.join(save_path, 'paths_{}.npy'.format(args.Split)), files)
 
-    for r, d, f in os.walk(os.path.join(args.save_path, save_file, 'points_input')):
-        for file in f:
-            if '.npy' in file:
-                files_points.append(os.path.splitext(file)[0])
-    np.save(os.path.join(args.save_path, save_file, 'paths_{}_points.npy'.format(save_file)), files_points)
-
-    for r, d, f in os.walk(os.path.join(args.save_path, save_file, 'landmarks_target')):
-        for file in f:
-            if '.npy' in file:
-                files_landmarks.append(os.path.splitext(file)[0])
-    np.save(os.path.join(args.save_path, save_file, 'paths_{}_landmarks.npy'.format(save_file)), files_landmarks)
+files = []
+for r, d, f in os.walk(os.path.join(save_path, 'landmarks_target')):
+    for file in f:
+        if '.npy' in file:
+            files.append(os.path.splitext(file)[0])
+np.save(os.path.join(save_path, 'landmarks_{}.npy'.format(args.Split)), files)
