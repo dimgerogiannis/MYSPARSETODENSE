@@ -62,4 +62,4 @@ def enhanced_generate_transform_matrices(mesh_path, factors, save_directory):
 
     return M, A, D, U, F, M_verts_faces
 
-enhanced_generate_transform_matrices(mesh_path='/data2/gan_4dfab/4dfab_crop_template.obj', factors=[4, 4, 4, 4], save_directory='/vol/deform/dg722/dynamic_4dfab/sparse-to-dense/Sparse2Dense/S2D/template/template/COMA_downsample')
+enhanced_generate_transform_matrices(mesh_path='/data2/gan_4dfab/downsampled_4dfab_crop_template.obj', factors=[4, 4, 4, 4], save_directory='/vol/deform/dg722/dynamic_4dfab/sparse-to-dense/Sparse2Dense/S2D/template/template/COMA_downsample')
