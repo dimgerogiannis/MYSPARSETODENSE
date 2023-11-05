@@ -11,9 +11,9 @@ def ensure_dir_exists(directory):
         os.makedirs(directory)
 
 parser = argparse.ArgumentParser(description='Arguments for dataset split')
-parser.add_argument('--Split', type=str, choices=['train', 'test'], default='train', help='Choose either "train" or "test" split')
+parser.add_argument('--Split', type=str, choices=['train', 'test', 'val'], default='val', help='Choose either "train" or "test" split')
 parser.add_argument('--data_path', type=str, default='/data2/gan_4dfab/4dfab_frames_downsampled', help='path to dataset')
-parser.add_argument('--save_path_base', type=str, default='/data2/gan_4dfab/S2D_Data_downsampled/', help='path to save processed data')
+parser.add_argument('--save_path_base', type=str, default='/data2/gan_4dfab/S2D_Data_downsampled_train_test_val/', help='path to save processed data')
 parser.add_argument('--ldm_path', type=str, default='./template/downsampled_cropped_landmarks.pkl', help='path to landmarks]')
 args = parser.parse_args()
 
@@ -24,11 +24,12 @@ subjects = os.listdir(args.data_path)
 random.shuffle(subjects)
 
 # Split subjects into train and test sets (85-15 split)
-test_subjects = set(subjects[:int(0.15 * len(subjects))])  # 15% for testing
-train_subjects = set(subjects[int(0.15 * len(subjects)):])  # 85% for training
+test_subjects = set(subjects[:int(0.10 * len(subjects))]) 
+val_subjects = set(subjects[int(0.10 * len(subjects)):int(0.20 * len(subjects))])  
+train_subjects = set(subjects[int(0.20 * len(subjects)):])  
 
 # Determine the current split's subjects based on the Split argument
-current_split_subjects = train_subjects if args.Split == 'train' else test_subjects
+current_split_subjects = train_subjects if args.Split == 'train' else (test_subjects if args.Split == 'test' else val_subjects)
 
 save_path = args.save_path_base + args.Split
 
