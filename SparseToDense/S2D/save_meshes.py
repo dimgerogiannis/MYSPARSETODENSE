@@ -5,7 +5,7 @@ import os
 
 
 def save_meshes(predictions, save_path_Meshes, n_meshes):
-    tri = trimesh.load( './template/template/template.obj', process=False)
+    tri = trimesh.load( './template/template/downsampled_4dfab_crop_template.obj', process=False)
     triangles=tri.faces
     for i in range(n_meshes):
         tri_mesh = trimesh.Trimesh(np.asarray(np.squeeze(predictions[i])), np.asarray(triangles), process=False)
