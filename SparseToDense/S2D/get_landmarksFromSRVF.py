@@ -10,9 +10,12 @@ import os
 from os.path import isfile, join
 
 
+sequence_length = 100
+landmarks_no = 60
+
 def transfer_SRVF( landmarks, SRVF):
-  len_=30
-  L=68
+  len_=sequence_length
+  L=landmarks_no
 
 
   landmarks = process_landmarks(landmarks)
