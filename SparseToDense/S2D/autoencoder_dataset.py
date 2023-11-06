@@ -11,18 +11,19 @@ import random
 
 class autoencoder_dataset(Dataset):
 
-    def __init__(self, template, neutral_root_dir, points_dataset, shapedata, normalization = True, dummy_node = True):
-        # points_dataset: train/val/test
+    def __init__(self, template, base_dir, split, shapedata, normalization = True, dummy_node = True):
+        # split: train/val/test
+        # base_dir: contains trail, val, test subdirs (/data2/gan_4dfab/S2D_Data_downsampled_train_test_val/)
 
         self.shapedata = shapedata
         self.normalization = normalization
-        #self.root_dir = root_dir
-        self.neutral_root_dir = neutral_root_dir
-        self.points_dataset = points_dataset
+        self.base_dir = base_dir
+        self.base_dir = self.base_dir + split
+        self.split = split
         self.dummy_node = dummy_node
-        self.paths = np.load(os.path.join(neutral_root_dir, 'paths_'+points_dataset+'.npy')) 
+        self.paths = np.load(os.path.join(self.base_dir, 'paths_' + split + '.npy')) 
         self.template=template
-        self.paths_lands=np.load(os.path.join(neutral_root_dir, 'landmarks_test.npy'))
+        self.paths_lands=np.load(os.path.join(self.base_dir, 'landmarks_' + split + '.npy'))
 
     def __len__(self):
         return len(self.paths)
@@ -33,23 +34,22 @@ class autoencoder_dataset(Dataset):
         basename = self.paths[idx] 
         basename_landmarks=self.paths_lands[idx]
 
-        verts_input= np.load(os.path.join(self.neutral_root_dir,'points_input', basename+'.npy'), allow_pickle=True)
-        if os.path.isfile(os.path.join(self.neutral_root_dir, 'points_target', basename + '.npy')):
-           verts_target = np.load(os.path.join(self.neutral_root_dir, 'points_target', basename + '.npy'),allow_pickle=True)
+        verts_input= np.load(os.path.join(self.base_dir,'points_input', basename+'.npy'), allow_pickle=True)
+        if os.path.isfile(os.path.join(self.base_dir, 'points_target', basename + '.npy')):
+           verts_target = np.load(os.path.join(self.base_dir, 'points_target', basename + '.npy'),allow_pickle=True)
         else:
             verts_target=np.zeros(np.shape(verts_input))
 
 
-        landmarks_neutral = np.load(os.path.join(self.neutral_root_dir, 'landmarks_input', basename_landmarks + '.npy'), allow_pickle=True)
-        landmarks=np.load(os.path.join(self.neutral_root_dir,'landmarks_target', basename_landmarks+'.npy'), allow_pickle=True)
+        landmarks_neutral = np.load(os.path.join(self.base_dir, 'landmarks_input', basename_landmarks + '.npy'), allow_pickle=True)
+        landmarks=np.load(os.path.join(self.base_dir,'landmarks_target', basename_landmarks+'.npy'), allow_pickle=True)
         landmarks=landmarks-landmarks_neutral
 
         if self.normalization:
-
-            verts_init = verts_init - self.shapedata.mean
-            verts_init = verts_init/self.shapedata.std
-            verts_neutral=verts_neutral- self.shapedata.mean
-            verts_neutral=verts_neutral/self.shapedata.std
+            verts_input = verts_input - self.shapedata.mean
+            verts_input = verts_input / self.shapedata.std
+            verts_target = verts_target - self.shapedata.mean
+            verts_target = verts_target / self.shapedata.std
 
 
         verts_input[np.where(np.isnan(verts_input))]=0.0
@@ -64,9 +64,7 @@ class autoencoder_dataset(Dataset):
             verts_ = np.zeros((verts_input.shape[0] + 1, verts_input.shape[1]), dtype=np.float32)
             verts_[:-1,:] = verts_input
 
-            verts_input=verts_
-
-        
+            verts_input=verts_        
     
         verts_input = torch.Tensor(verts_input)
         landmarks = torch.Tensor(landmarks)
