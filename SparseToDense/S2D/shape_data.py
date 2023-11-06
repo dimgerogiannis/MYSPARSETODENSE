@@ -16,7 +16,7 @@ import time
 from tqdm import tqdm
 
 class ShapeData(object):
-    def __init__(self, split, base_dir, reference_mesh_file, normalization=True, meshpackage='trimesh', load_flag=True, mean_subtraction_only=False, norm_use_only_neutral=True, use_unique=True):
+    def __init__(self, split, base_dir, reference_mesh_file, normalization=True, meshpackage='trimesh', load_flag=True, mean_subtraction_only=False, norm_use_only_neutral=True, use_unique=False):
         self.split = split
         self.base_dir = os.path.join(base_dir, split)
         self.vertices_neutral = None
